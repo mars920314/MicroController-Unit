@@ -1,0 +1,698 @@
+/******************************************************/
+/*		 			串口无线转换器控制程序用常数定义					*/
+/* 								u2r_cons														*/
+/* 								20100124														*/
+/******************************************************/
+
+// 注：以下文档的 TAB 为 2 个字符！
+
+/* 数据转发用常数 */
+
+#define		MaxRcvByte_C 256			// 接收缓冲区最大字节数
+
+#define		UART_GAP_115200	1000		//  等待启动无线发送的UART 字节间隔时间, 对应 24L01 2M 速率发送 32字节的时间，约500us
+#define		UART_GAP_19200  8000		//  对应 19200 8 N 1
+#define		DIS24L01_TX_TIME 2000		//  24L01  收到数据后禁止发送的时间，约合 400 us
+
+#define		WAIT_RF_TXD_BYTES	32		//  等待启动无线发送的UART 接收字节数，此数只能为 4、8、16、32，因 24L01 特性所致
+#define		FULL_CHANNEL 5					//  满 32 字节使用通道 
+#define		PART_CHANNEL 4					//  不满 32 字节使用通道
+
+#define		BACK_OVER_TIME	100			// 回送超时限制 100 ms
+#define		RETRY_TIMES			3				// 重试次数
+
+#define		PC_ADAPTER			0x9999	// PC 侧的 24L01 设备地址
+#define		PC_ADAPTERL			0x99
+#define		PC_ADAPTERH			0x99
+
+#define		CAR1						0x1111	// 小车 1 侧 24L01 设备地址
+#define		CAR1L						0x11
+#define		CAR1H						0x11
+
+#define		CAR2						2222		// 小车 2 侧 24L01 设备地址
+
+/* 工作指示用常数 */
+#define		LAMP_ON_OFF_TIME 1000	// 正常工作时指示灯亮、暗时间
+#define		LAMP_ON			0
+#define		LAMP_OFF		1
+
+/* 公共常数 */
+#define		true				1
+#define		false				0
+
+#define		EN_RW_RFM		0
+#define		DIS_RW_RFM	1
+
+#define		RFM_INIT_DELAY_TIME 500					// 上电延时500ms后再初始化
+
+#define		MAX_MESSAGE		16								// UART 收无线发的最大消息数
+
+#define		OVERTIME_FOR_24L01TX	 10				// 24L01 发送超时限制，10ms
+#define		OVERTIME_FOR_UART_TX	  5				// UART  发送超时限制，5ms
+
+//STC12CX052硬件初始化用
+
+/* CPU时钟参数定义 */
+
+#define		CLKDIV1_C	0x0		/* 设置CPU 主时钟分频 */
+#define		CLKDIV2_C	1
+#define		CLKDIV4_C	2
+#define		CLKDIV8_C	3
+#define		CLKDIV16_C	4
+#define		CLKDIV32_C	5
+#define		CLKDIV64_C	6
+#define		CLKDIV128_C	7
+
+#define		FOSC		22118400l				// 振荡器频率 22.1184Mhz
+
+/* 电源控制用 */
+#define		INTO_IDLE				0x01				// 进入休眠方式 或 PCON
+#define		INTO_POWER_DOWN 0x02				// 进入掉电模式 或 PCON
+
+/* 输入输出口定义 */
+
+#define		P1M0_C	0x00		/* 0000 0000， 2、3、4、7 输出，0、1、5、6 标准51口, 100124 修改*/
+#define		P1M1_C	0x9C		/* 1001 1100 */
+
+#define		P3M0_C	0x20		/* 0010 0000，	0 ，1 、2 、3 、4、7 标准51口， 5 OC输出 */
+#define		P3M1_C	0x20		/* 0010 0000 */
+
+/* 定时器参数定义 */
+
+#define		T0MODE0 0x00		// 0000 0000，Timer0工作在模式0 ，13位定时；
+#define		T0MODE1 0x01		// 0000 0001，Timer0工作在模式1 ，16位定时；
+#define		T0MODE2 0x02		// 0000 0010，Timer0工作在模式2 ，8 位自动重加载定时；
+#define		T0MODE3 0x03		// 0000 0011，Timer0工作在模式3 
+
+#define		T0_TIMER 0x00		// Timer0 工作在定时器模式
+#define		T0_COUNTER 0x04	// Timer0 工作在计数器模式
+#define		T0_DISGATE 0x00	// Timer0 禁止INT0引脚控制
+#define		T0_ENGATE 0x08	// Timer0 允许INT0引脚控制
+
+#define		T1MODE0 0x00		// 0000 0000，Timer0工作在模式0 ，13位定时；
+#define		T1MODE1 0x10		// 0000 0001，Timer0工作在模式1 ，16位定时；
+#define		T1MODE2 0x20		// 0000 0010，Timer0工作在模式2 ，8 位自动重加载定时；
+#define		T1MODE3 0x30		// 0000 0011，Timer0工作在模式3 
+
+#define		T1_TIMER 0x00		// Timer1 工作在定时器模式
+#define		T1_COUNTER 0x40	// Timer1 工作在计数器模式
+#define		T1_DISGATE 0x00	// Timer1 禁止INT1引脚控制
+#define		T1_ENGATE 0x80	// Timer1 允许INT1引脚控制
+
+#define		SET_T0X12_C 0x80		// or AUXR
+#define		CLR_T0X12_C 0x7F		// and AUXR
+
+#define		SET_T1X12_C 0x40		// or AUXR
+#define		CLR_T1X12_C 0xBF		// and AUXR
+
+#define		TIME1ms_C		0xF8D0	/* 1ms 定时的加载值字节，对应 22.1184MHz 定时器12分频 */		
+#define		TIME1msH_C	0xF8		/* 1ms 定时的加载值高字节 */
+#define		TIME1msL_C	0xD0		/* 1ms 定时的加载值低字节 */
+
+#define		TIME10ms_C	0xB800	/* 10ms 定时的加载值字节，对应 22.1184MHz 定时器12分频 */		
+#define		TIME10msH_C	0xB8		/* 10ms 定时的加载值高字节 */
+#define		TIME10msL_C	0x00		/* 10ms 定时的加载值低字节 */
+
+
+/* 串口参数 */
+
+#define		B_115200	5
+#define		B_57600		4
+#define		B_38400		3
+#define 	B_19200		2
+#define 	B_9600		1
+#define 	B_4800		0
+
+// 在 22.1184Hz 下用 T1 作波特率发生器， 1 分频。SMOD = 0。 090320
+
+#define		B115200_C 250
+#define		B57600_C  244
+#define   B38400_C  238
+#define 	B19200_C	220		
+#define 	B9600_C		184		
+#define 	B4800_C		112		
+
+
+#define		UART_MODE1_C 0x40		// SM0,SM1= 01
+#define		EN_RCV_C	0x10			// REN=1
+
+/* SPI 初始化常数 */
+
+#define		SCLK_FDIV4		0x00			// SPI  时钟： CPU_CLK/4
+#define		SCLK_FDIV16		0x01			// SPI  时钟： CPU_CLK/16
+#define		SCLK_FDIV64		0x10			// SPI  时钟： CPU_CLK/64
+#define		SCLK_FDIV128	0x11			// SPI  时钟： CPU_CLK/128
+
+#define		SAMPLE_IN_FIRST 0x00		// 在时钟的前沿数据采样
+#define		SAMPLE_IN_SECOND 0x04		// 在时钟的后沿数据采样
+
+#define		SCLK_IS_HIGH	0x00			// 时钟为正脉冲，前沿为上升，后沿为下降
+#define		SCLK_IS_LOW		0x08			// 时钟为负脉冲，前沿为下降，后沿为上升
+
+#define		SPI_SLV				0x00			// 设置 SPI 为从模式
+#define		SPI_MASTER		0x10			// 设置 SPI 为主模式
+
+#define		MSB_FIRST_SEND 0x00			// 先发送数据的最高位
+#define		LSB_FIRST_SEND 0x20			// 先发送数据的最低位
+
+#define		DISABLE_SPI		0x00			// 禁止 SPI
+#define		ENABLE_SPI		0x40			// 使能 SPI	
+
+#define		IGNORER_SS		0x80			// 忽略 SS 引脚
+#define		SLV_BY_SS			0x00			// 有 SS 引脚选择主、从模式
+
+#define		CLEAR_SPISTAT 0xC0			// 清除SPI的 SPIF、WCOL 标志
+#define		GET_SPIF			0x80			// 得到SPIF标志
+
+			
+// PCA 初始化常数，
+#define		STARTPCA_C 	0x40;		// or CCON 中的CR位控制 启动 PCA
+#define		STOPPCA_C 	0xBF;		// and CCON 中的CR位控制 停止 PCA
+
+#define		FOSCdiv12_C 0x00
+#define		FOSCdiv2_C 	0x02	
+#define		T0Over_C 	0x04		// T0 溢出
+#define		ECI_C 		0x06		// 外部脉冲输入
+
+#define		EnCF_C		0x01			// 允许PCA溢出中断
+
+#define		EnCMP_C		0x40			// 0100 0000, CCAPMn 中控制位6， 允许比较器
+#define		EnCAPP_C	0x20			// 0010 0000, CCAPMn 中控制位5， 允许上升沿捕获
+#define		EnCAPN_C	0x10			// 0001 0000, CCAPMn 中控制位4， 允许下降沿捕获
+#define		EnMAT_C		0x08			// 0000 1000, CCAPMn 中控制位3， 允许匹配或捕获后置位 CCFn
+#define		EnTOG_C		0x04			// 0000 0100, CCAPMn 中控制位2， 允许匹配或捕获后触发输出翻转
+#define		EnPWM_C		0x02			// 0000 0010, CCAPMn 中控制位1， 允许对应的端子输出PWM信号
+#define		EnCCFI_C	0x01			// 0000 0001, CCAPMn 中控制位0， 允许CCF产生中断
+
+/* 中断处理参数定义 */
+#define		EnINT0_C 	0x01			// IE
+#define		EnT0_C 		0x02
+#define		EnINT1_C	0x04
+#define		EnT1_C 		0x08
+#define		EnUART_C	0x10
+#define		EnADCSPI_C 	0x20
+#define		EnPCALVD_C 	0x40
+
+#define		EnADCI_C	0x10			// 在 AUXR 中增加的中断控制子项
+#define		EnSPII_C	0x08			
+#define		EnLVDI_C	0x04
+
+#define		INT0_DOWN	0x01			// TCON 中对INT0中断信号的控制，下降沿触发；
+#define		INT0_LOW	0x00			// TCON 中对INT0中断信号的控制，低电平触发；
+
+#define		INT1_DOWN	0x04			// TCON 中对INT1中断信号的控制，下降沿触发；
+#define		INT1_LOW	0x00			// TCON 中对INT1中断信号的控制，低电平触发；
+
+#define		NOIP_C		0x00			/* 无优先级 */
+
+#define		INT0_HIGH 	0x01		// IP 寄存器中的优先级设置，IPH暂不处理。
+#define		T0_HIGH			0x02
+#define		INT1_HIGH		0x04
+#define		T1_HIGH			0x08
+#define		UART_HIGH		0x10
+#define		ADCSPI_HIGH	0x20
+#define		PCALVD_HIGH 0x40	
+
+
+/* WDT 参数定义 */
+
+#define 	Watchdog_C	0x3D		// 0011 1101, 设置 WDT 分频选择： 101， 约 1s ( 22.1184MHz)
+#define 	CLRWDT_C    0x3D
+
+#define		WDTTIME_C		500			// 0.5秒清一次 WDT。
+
+
+/******************	RFM12 用常数	********************************************************/
+
+// 命令 1：	
+#define		CONFIG_BAND	0x8000	// 配置命令
+
+#define		F315M				0x0000	// 315MHz 频段	
+#define		F433M				0x0010	// 433MHz 频段
+#define		F868M				0x0020	// 868MHz 频段
+#define		F915M				0x0030	// 915MHz 频段
+
+#define		ENABLE_FIFO	0x0040	// 允许接收FIFO功能，接收数据存放在FIFO中
+#define		ENABLE_TREG	0x0080	// 允许使用内部发射寄存器，发射数据写入发射寄存器后发射
+
+#define		XTCAP8P5		0x0000	// 晶振负载电容 8.5P
+#define		XTCAP9P			0x0001	// 晶振负载电容 9P
+#define		XTCAP9P5		0x0002	// 晶振负载电容 9.5P
+#define		XTCAP10P		0x0003	// 晶振负载电容 10P
+#define		XTCAP10P5		0x0004	// 晶振负载电容 10.5P
+#define		XTCAP11P		0x0005	// 晶振负载电容 11P
+#define		XTCAP11P5		0x0006	// 晶振负载电容 11.5P
+#define		XTCAP12P		0x0007	// 晶振负载电容 12P
+#define		XTCAP12P5		0x0008	// 晶振负载电容 12.5P
+#define		XTCAP13P		0x0009	// 晶振负载电容 13P
+#define		XTCAP13P5		0x000A	// 晶振负载电容 13.5P
+#define		XTCAP14P		0x000B	// 晶振负载电容 14P
+#define		XTCAP14P5		0x000C	// 晶振负载电容 14.5P
+#define		XTCAP15P		0x000D	// 晶振负载电容 15P
+#define		XTCAP15P5		0x000E	// 晶振负载电容 15.5P
+#define		XTCAP16P		0x000F	// 晶振负载电容 16P
+	
+// 命令 2：	
+#define		POWER_M			0x8200	// 功率管理
+
+#define		DIS_CLKOUT	0x0001	// 关闭时钟输出
+#define		EN_WAKEUP		0x0002	// 打开唤醒计时器
+#define		EN_LV_CHK		0x0004	// 打开低电压检测
+#define		XT_ON				0x0008	// 打开晶振
+#define		SYNTH_ON		0x0010	// 打开发射用合成器		
+#define		EN_TXD			0x0020	// 打开发射用功放、PLL、合成器，允许发射
+#define		EN_BASE			0x0040	// 单独打开接收基带
+#define		EN_RCV			0x0080	// 打开所有接收通道
+
+// 命令 3：
+#define		SET_FREQ		0xA000	// 频率设置命令，可以使中心频率偏移，对于 433MHz，可以从 430 —— 439
+
+#define		F0_436MHz		0x0960	// F = (f0/10 - 43)*4000, 对于433Mhz而言。
+#define		F0_431MHz		0x0190	
+
+// 命令 4：
+#define		SET_BPS			0xC600	// 设置数据收发速率 bps
+
+#define		RF38400			0x0008	// 38400bps
+#define		RF19200			0x0011	// 19200bps
+#define		RF9600			0x0023	// 9600bps
+#define		RF4800			0x0047	// 4800bps
+
+// 命令 5：
+#define		CONFIG_RCV	0x9000	// 配置接收器
+
+#define		PIN1_INT_IN	0x0000	// RFM12 脚1 中断入
+#define		PIN1_VDI_OUT 0x0400	// RFM12 脚1 数据有效输出
+
+#define		VDI_FAST		0x0000	// VDI 响应时间 快
+#define		VDI_MED			0x0100	// VDI 响应时间 中
+#define		VDI_LOW			0x0200	// VDI 响应时间 慢
+#define		VDI_ON			0x0300	// VDI 响应时间 常开
+
+#define		BASE400K		0x0020	// 接收基带的带宽 ：400kHz
+#define		BASE340K		0x0040	// 接收基带的带宽 ：340kHz
+#define		BASE270K		0x0060	// 接收基带的带宽 ：270kHz
+#define		BASE200K		0x0080	// 接收基带的带宽 ：200kHz
+#define		BASE134K		0x00A0	// 接收基带的带宽 ：134kHz
+#define		BASE67K			0x00C0	// 接收基带的带宽 ：67kHz
+
+#define		GAIN_0dB		0x0000	// 增益：0dB
+#define		GAIN_6dB		0x0008	// 增益：-6dB
+#define		GAIN_14dB		0x0010	// 增益：-14dB
+#define		GAIN_20dB		0x0018	// 增益：-20dB
+
+#define		RSSI_103dB	0x0000	// RSSI 检测器阀值： -103dB
+#define		RSSI_97dB		0x0001	// RSSI 检测器阀值： -97dB
+#define		RSSI_91dB		0x0002	// RSSI 检测器阀值： -91dB
+#define		RSSI_85dB		0x0003	// RSSI 检测器阀值： -85dB
+#define		RSSI_79dB		0x0004	// RSSI 检测器阀值： -79dB
+#define		RSSI_73dB		0x0005	// RSSI 检测器阀值： -73dB
+#define		RSSI_67dB		0x0006	// RSSI 检测器阀值： -67dB
+#define		RSSI_61dB		0x0007	// RSSI 检测器阀值： -61dB
+
+// 命令 6：
+#define		SET_FILTER	0xC228	// 设置滤波器
+
+#define		EN_AUTOLOCK	0x0080	// 允许时钟自动锁定功能
+#define		FAST_LOCK		0x0040	// 时钟快速锁定模式
+#define		SLOW_LOCK		0x0000	// 时钟慢速锁定模式
+
+#define		DIGIT_FLT		0x0000	// 数字滤波器
+#define		ANALOG_FLT	0x0010	// 模拟RC滤波器
+
+#define		DATA_CHK_LEVEL0 	0x0000	// 接收数据质量检测阀值，越大要求越高
+#define		DATA_CHK_LEVEL1 	0x0001	// 接收数据质量检测阀值
+#define		DATA_CHK_LEVEL2 	0x0002	// 接收数据质量检测阀值
+#define		DATA_CHK_LEVEL3 	0x0003	// 接收数据质量检测阀值
+#define		DATA_CHK_LEVEL4 	0x0004	// 接收数据质量检测阀值
+#define		DATA_CHK_LEVEL5 	0x0005	// 接收数据质量检测阀值
+#define		DATA_CHK_LEVEL6 	0x0006	// 接收数据质量检测阀值
+#define		DATA_CHK_LEVEL7 	0x0007	// 接收数据质量检测阀值
+
+// 命令 7：
+#define		SET_FIFO					0xCA00	// 设置FIFO接收中断及复位模式
+
+#define		RCV8BIT_INT				0x0080	// 接收8位数据后中断
+#define		RCV9BIT_INT				0x0070	// 接收9位数据后中断
+
+#define		FIFO_ALL_IN				0x0004	// FIFO总是接受数据
+#define		FIFO_ON_SYN				0x0000	// 收到同步字后将数据填入 FIFO
+#define		EN_FIFO_IN				0x0002	// 允许收到同步字后数据填入 FIFO
+#define		DIS_AUTO_RES			0x0001	// 禁止高灵敏度自动复位
+
+// 命令 8：
+#define		SET_AFC						0xC400	// 设置自动频率控制
+
+#define		AFC_OFF						0x0000	// 关闭自动控制
+#define		PWRON_RUN					0x0040	// 上电运行一次
+#define		AFC_IN_RCV				0x0080	// 接收时有效
+#define		AFC_OFF_VDI				0x00C0	// 频偏不受VDI影响
+
+#define		Foff_NOLIMIT			0x0000	// 不限制频偏
+#define		Foff_40kHZ				0x0010	// +37.5 -40kHz, 对于 433、315 而言
+#define		Foff_20kHZ				0x0020	// +17.5 -20kHz, 对于 433、315 而言
+#define		Foff_10kHZ				0x0030	// +7.5  -10kHz, 对于 433、315 而言
+
+#define		SAVE_Foff					0x0008	// 触发保存计算出的频偏结果
+#define		FINE_AFC					0x0004	// 置为高精度模式，计算时间为标准的4倍，但不确定度减半
+
+#define		EN_Foff_OUT				0x0002	// 允许计算出的频偏输出
+#define		EN_Foff_CAL				0x0001	// 允许计算频偏
+
+// 命令 9：
+#define		CONFIG_TXD				0x9800	// 配置发送器
+
+#define		MODEM_P						0x0100	// 调制为正极性
+#define		MODEM_N						0x0000	// 调制为负极性
+
+#define		FSK_15kHz					0x0000	// 调制频率幅度 +/- 15kHz
+#define		FSK_30kHz					0x0010	// 调制频率幅度 +/- 30kHz
+#define		FSK_45kHz					0x0020	// 调制频率幅度 +/- 45kHz
+#define		FSK_60kHz					0x0030	// 调制频率幅度 +/- 60kHz
+#define		FSK_75kHz					0x0040	// 调制频率幅度 +/- 75kHz
+#define		FSK_90kHz					0x0050	// 调制频率幅度 +/- 90kHz
+#define		FSK_105kHz				0x0060	// 调制频率幅度 +/- 105kHz
+#define		FSK_120kHz				0x0070	// 调制频率幅度 +/- 120kHz
+#define		FSK_135kHz				0x0080	// 调制频率幅度 +/- 135kHz
+#define		FSK_150kHz				0x0090	// 调制频率幅度 +/- 150kHz
+#define		FSK_165kHz				0x00A0	// 调制频率幅度 +/- 165kHz
+#define		FSK_180kHz				0x00B0	// 调制频率幅度 +/- 180kHz
+#define		FSK_195kHz				0x00C0	// 调制频率幅度 +/- 195kHz
+#define		FSK_210kHz				0x00D0	// 调制频率幅度 +/- 210kHz
+#define		FSK_225kHz				0x00E0	// 调制频率幅度 +/- 225kHz
+#define		FSK_240kHz				0x00F0	// 调制频率幅度 +/- 240kHz
+
+#define		OUT_0dB						0x0000	// 发射输出功率衰减
+#define		OUT_3dB						0x0001	// 发射输出功率衰减 -3dB
+#define		OUT_6dB						0x0002	// 发射输出功率衰减 -6dB
+#define		OUT_9dB						0x0003	// 发射输出功率衰减 -9dB
+#define		OUT_12dB					0x0004	// 发射输出功率衰减 -12dB
+#define		OUT_15dB					0x0005	// 发射输出功率衰减 -15dB
+#define		OUT_18dB					0x0006	// 发射输出功率衰减 -18dB
+#define		OUT_21dB					0x0007	// 发射输出功率衰减 -21dB
+
+// 命令 10：
+#define		SET_WAKEUP_TIME		0xE000	// 设置唤醒时间
+
+// 命令 11：
+#define		SET_LOW_DUTY			0xC800	// 设置低负荷周期模式，降低接收时的功耗
+
+#define		EN_LOW_DUTY				0x0001	// 使能低负荷周期模式
+
+// 命令 12：
+#define		SET_LV_FOUT				0xC000	//设置低电压检测的阀值，时钟输出的分频
+
+#define		LOW_3V						0x0008	// = 2.2V + n * 0.1V
+
+#define		FOUT_1000kHz			0x0000	// 时钟输出 1MHz
+#define		FOUT_1250kHz			0x0020	// 时钟输出 1.25MHz
+#define		FOUT_1660kHz			0x0040	// 时钟输出 1.66MHz
+#define		FOUT_2000kHz			0x0060	// 时钟输出 2MHz
+#define		FOUT_2500kHz			0x0080	// 时钟输出 2.5MHz
+#define		FOUT_3330kHz			0x00A0	// 时钟输出 3.33MHz
+#define		FOUT_5000kHz			0x00C0	// 时钟输出 5MHz
+#define		FOUT_10000kHz			0x00E0	// 时钟输出 10MHz
+
+// 命令 13：
+#define		READ_FIFO					0xB000	// 从FIFO中读一字节（8位）
+
+// 命令 14：
+#define		WR_TX_BYTE				0xB800	// 写发射数据，一个字节（8位）
+
+// 命令 15：
+#define		READ_STAT					0x0000	// 读状态命令
+
+#define		GET_DATA_READY		0x8000	// 得到对应的接收数据准备好标志，或发送结束标志
+
+// 内部命令：
+#define		SET_TO_DEFAULT		0xFE00	// 将所有寄存器恢复到默认值
+			
+/******************	RFM12 用常数结束	********************************************************/
+
+/****************** 24L01 用常数 ***********************************************************/
+#define		READ				0				// for SPI RW	
+#define		WRITE				1
+
+// SPI 命令
+#define 	READ_REG		0x00							// 低 5 位为寄存器地址 
+#define		WRITE_REG		0x20							// 低 5 位为寄存器地址
+#define		READ_DATA		0x61							// 读接收FIFO数据
+#define		WRITE_DATA	0xA0							// 写发送FIFO数据
+#define		CLEAR_TX_FIFO	0xE1						// 在发射模式下，清除发送FIFO
+#define		CLEAR_RX_FIFO	0xE2						// 在接收模式下，清除接收FIFO
+#define		REUSE_TX_DATA 0xE3						// 在发射模式下，使发送FIFO数据重新有效
+#define		RD_STAT		0xFF								// 空操作，用来读状态
+
+// 寄存器地址及内容
+#define		CONFIG			0x00							// —————— 配置寄存器 —————
+
+#define		EN_RX_INT		0x00							// 允许数据接收中断
+#define		DIS_RX_INT	0x40							// 禁止数据接收中断
+#define		EN_TX_INT		0x00							// 允许数据发送中断
+#define		DIS_TX_INT	0x20							// 禁止数据发送中断
+#define		EN_MAX_R_TX_INT  0x00					// 允许到最大重复发送次数中断
+#define		DIS_MAX_R_TX_INT 0x10					// 禁止到最大重复发送次数中断
+#define		EN_CRC			0x08							// 允许发送包自动添加CRC校验
+#define		DIS_CRC			0x00							// 禁止 CRC
+#define		CRC_2BYTE		0x04							//  2 字节CRC
+#define		CRC_1BYTE		0x00							//  1 字节CRC
+#define		POWER_UP		0x02							//  供电
+#define		POWER_DOWN	0x00							//  休眠
+#define		PRI_RX_MODE	0x01							// 主接收模式
+#define		PRI_TX_MODE	0x00							// 主发送模式
+
+#define		AUTO_ACK		0x01							// ———— 自动应答控制寄存器 ——————
+
+#define		ENAA_CH5		0x20							// 允许通道 5 自动应答
+#define		DISAA_CH5		0x00							// 禁止通道 5 自动应答
+#define		ENAA_CH4		0x10							// 允许通道 4 自动应答
+#define		DISAA_CH4		0x00							// 禁止通道 4 自动应答
+#define		ENAA_CH3		0x08							// 允许通道 3 自动应答
+#define		DISAA_CH3		0x00							// 禁止通道 3 自动应答
+#define		ENAA_CH2		0x04							// 允许通道 2 自动应答
+#define		DISAA_CH2		0x00							// 禁止通道 2 自动应答
+#define		ENAA_CH1		0x02							// 允许通道 1 自动应答
+#define		DISAA_CH1		0x00							// 禁止通道 1 自动应答
+#define		ENAA_CH0		0x01							// 允许通道 0 自动应答
+#define		DISAA_CH0		0x00							// 禁止通道 0 自动应答
+
+#define		RX_ADDR			0x02							// ———— 接收地址控制寄存器 ————
+
+#define		ENADDR_CH5	0x20							// 允许通道 5 接收地址
+#define		DISADDR_CH5	0x00							// 禁止通道 5 接收地址
+#define		ENADDR_CH4	0x10							// 允许通道 4 接收地址
+#define		DISADDR_CH4	0x00							// 禁止通道 4 接收地址
+#define		ENADDR_CH3	0x08							// 允许通道 3 接收地址
+#define		DISADDR_CH3	0x00							// 禁止通道 3 接收地址
+#define		ENADDR_CH2	0x04							// 允许通道 2 接收地址
+#define		DISADDR_CH2	0x00							// 禁止通道 2 接收地址
+#define		ENADDR_CH1	0x02							// 允许通道 1 接收地址
+#define		DISADDR_CH1	0x00							// 禁止通道 1 接收地址
+#define		ENADDR_CH0	0x01							// 允许通道 0 接收地址
+#define		DISADDR_CH0	0x00							// 禁止通道 0 接收地址
+
+#define		SET_ADDRW		0x03							// ———— 设置收发地址宽度 ————
+
+#define		ADDR_0BYTE	0x00							// 忽略地址
+#define		ADDR_3BYTE	0x01							// 地址宽度 3 字节， 从低开始使用
+#define		ADDR_4BYTE	0x02							// 地址宽度 4 字节， 从低开始使用
+#define		ADDR_5BYTE	0x03							// 地址宽度 5 字节 
+
+#define		SET_RE_TX		0x04							// ———— 设置自动重发参数 ————
+
+#define		RETX_DELAY336us 	0x00				// 重发延时 250+86 us
+#define		ADD250us		0x10							// 重发延时增加 250 us,最大为 15个，共 4000 + 86 us
+#define		DIS_RETX		0x00							// 重发次数设为 “0”，则禁止重发
+#define		RETX_TIMES	0x01							// 允许重发次数
+
+#define		SET_RF_CH		0x05							// ———— 设置射频通道 ————
+
+#define		RF_SETUP		0x06							// ———— 射频设置 ————
+
+#define		EN_PLLLOCK	0x10							// 允许 PLL_LOCK
+#define		DIS_PLLLOCK	0x00							// 禁止 PLL_LOCK
+#define		RF_1Mbps		0x00							// RF 速率：1Mbps
+#define		RF_2Mbps		0x08							// RF 速率：2Mbps
+#define		RFPWR_N18dB	0x00							// RF 发射功率 - 18dB
+#define		RFPWR_N12dB	0x02							// RF 发射功率 - 12dB
+#define		RFPWR_N6dB	0x04							// RF 发射功率 - 6dB
+#define		RFPWR_0dB		0x06							// RF 发射功率 0 dB
+#define		LNA_HCURR		0x01							// 低噪音放大增益
+
+#define		STATUS			0x07							// ———— 状态寄存器 ———— 
+
+#define		GET_DATARDY	0x40							// 获取接收数据准备好信息
+#define		GET_TX_OK		0x20							// 获取发送OK信息
+#define		GET_RETX_OVER 0x10						// 获取重发次数达到限定值信息
+#define		GET_DATA_CHNo 0x0E						// 获取接收数据准备好的通道号
+#define		GET_TXFIFO_FULL 0x01					// 获取发送FIFO满信息
+
+#define		RXFIFO_EMPTY 0x0E							// 接收 FIFO 为空标志
+
+#define		TX_INFO			0x08							// ———— 发送相关信息寄存器 ————
+
+#define		GET_LOSS_CNT 0xF0							// 获取发送丢失包计数值
+#define		GET_RETX_CNT 0x0F							// 获取自动重发计数值
+
+#define		CARRIER_DETECT 0x09						// ———— 载波检测寄存器 ————
+#define		GET_CD			0x01							// 获取载波检测结果
+
+#define		CH0_RX_ADDR	0x0A							// ———— 通道 0 接收地址 5 字节 ————		
+#define		CH1_RX_ADDR	0x0B							// ———— 通道 1 接收地址 5 字节 ————
+#define		CH2_RX_ADDR	0x0C							// ———— 通道 2 接收地址 1 字节 ————
+#define		CH3_RX_ADDR	0x0D							// ———— 通道 3 接收地址 1 字节 ————
+#define		CH4_RX_ADDR	0x0E							// ———— 通道 4 接收地址 1 字节 ————
+#define		CH5_RX_ADDR	0x0F							// ———— 通道 5 接收地址 1 字节 ————
+
+#define		TX_ADDR			0x10							// ———— 发送地址 5 字节 ————
+
+#define		CH0_RX_BYTES 0x11							// ———— 通道 0 接收 FIFO 字节数 ，最大 32 字节————
+#define		CH1_RX_BYTES 0x12							// ———— 通道 1 接收 FIFO 字节数 ，最大 32 字节————
+#define		CH2_RX_BYTES 0x13							// ———— 通道 2 接收 FIFO 字节数 ，最大 32 字节————
+#define		CH3_RX_BYTES 0x14							// ———— 通道 3 接收 FIFO 字节数 ，最大 32 字节————
+#define		CH4_RX_BYTES 0x15							// ———— 通道 4 接收 FIFO 字节数 ，最大 32 字节————
+#define		CH5_RX_BYTES 0x16							// ———— 通道 5 接收 FIFO 字节数 ，最大 32 字节————
+
+#define		FIFO_STATUS	0x17							// ———— FIFO 状态寄存器 ————
+
+#define		GET_TX_REUSE 0x40							// 获取重发标志
+#define		GET_TX_FULL	0x20							// 获取发送 FIFO 满标志
+#define		GET_TX_EMPTY 0x10							// 获取发送 FIFO 空标志
+#define		GET_RX_FIFO	0x02							// 获取接收 FIFO 满标志
+#define		GET_RX_EMPTY 0x01							// 获取接收 FIFO 空标志
+
+#define		RX_FIFO_EMPTY	0x01
+
+// 工作参数
+#define		RETX_DELAY2086us	0x70				// 重发延时 2086 us
+#define		RETX_DELAY586us	0x10				// 重发延时 586 us
+#define		RETX_3TIMES 0x03							// 允许重发次数 3 次
+#define		RETX_1TIMES 0x01							// 允许重发次数 1 次
+
+#define		RF_CHANEL8		8								// 设置射频通道 8  ,  2408MHz
+#define		RF_CHANEL108	108							// 设置射频通道 108,  2508MHz
+
+
+
+
+
+
+
+
+
+
+/******************************************************/
+/*		 			串口无线转换器控制程序变量定义						*/
+/* 								u2r_var														*/
+/* 								20100124														*/
+/******************************************************/
+
+// 注：以下文档的 TAB 为 2 个字符！
+
+// 收发缓冲区
+
+unsigned char xdata	ga_ucUartRcv_RfTxd[MaxRcvByte_C];		// UART 接收缓冲区, RF 发送缓冲区 
+unsigned char xdata	ga_ucRfRcv_UartTxd[MaxRcvByte_C];		// RF 接收缓冲区, UART 发送缓冲区 
+
+// 串口数据接收用 
+unsigned char 			gi_ucUart_RcvPtr;							// 存数指针，每收到一个字节保存到缓冲区后加“1”。
+unsigned char				gc_ucUart_RcvCnt;							// 接收的字节计数
+unsigned char				gc_ucUart_NewData;						// UART 收到新的数据, 改为字节计数，因为115200 太快，位标志会丢失信息，090324
+
+// 串口数据发送用 
+unsigned char				gi_ucUart_TxdPtr;							// 从缓冲区中取数的指针，每取出一个字节后加“1”。
+bit									g_bUart_TxdEnd;								// UART 发送完成标志
+
+// 无线数据接收用 
+unsigned char 			gi_ucRf_RcvPtr;								// 存数指针，每收到一个字节保存到缓冲区后加“1”。
+unsigned char				g_ucRf_RcvBytes;							// RFM12 数据包字节数
+unsigned char				gc_ucRf_RcvCnt;								// 无线数据接收计数器
+
+// 无线数据发送用 
+unsigned char				gi_ucRf_TxdPtr;								// 从缓冲区中取数的指针，每取出一个字节后加“1”。
+unsigned char				gc_ucRf_TxdCnt;								// 无线数据发送计数器
+
+// 无线处理用
+unsigned int				gc_ucRFM_initDelay;						// 上电延时一段时间后再初始化RFM12 or 24L01， 090118
+
+bit									g_bRFM12_Active;							//  RFM12 有效标志，
+bit									g_b24L01_Active;							//  24L01 有效标志，
+
+bit									g_bIn_Receive;								// 处于接收状态标志
+bit									g_bStartRF_Rcv;								// 开始接收RF数据标志
+bit									g_bRF_LEN_OK;									// 无线数据包长度正确
+bit									g_bRF_DataOK;									// 无线数据包接收完成。
+
+bit									g_bRF_TXD_Start;							// RFM12 开始发送数据
+bit									g_bEnd_RF_TXD;								// 最后一字节，建立结束标志
+
+// 消息
+bit									g_b1msFlag;										// 1ms 中断标志
+bit									g_bRFM12_Flag;								// RFM12 中断标志
+bit									g_b24L01_Flag;								// 24L01 中断标志
+
+// WDT
+unsigned int				gc_ui1msCnt;									// 1ms 计数器， 为处理WDT设置
+
+// 工作指示
+unsigned int				gc_uiLampCnt;									// 1ms 计数器，为显示用。
+
+// 超时转发
+unsigned int				g_uiUart_RcvGapTime;					// UART 接收间隙判断时间，超过此值即启动 RF 转发
+bit									g_bUart_RcvStart;							// UART 开始接收标志
+bit									g_bUart_RcvGap;								// UART 接收出现间隙标志
+
+unsigned char				gc_uc24L01_TxOverCnt;					// 24L01 发送超时计数
+unsigned char				gc_ucUART_TxOverCnt;					// UART 发送超时计数
+
+
+// --------------------  24L01 -------------------------------
+bit									g_b24L01_in_TX;								// 24L01 处于发送状态
+bit									g_b24L01_TX_OK;								// 24L01 发送数据完成；
+bit									g_b24L01_Disable_TX;					// 24L01 收到数据后禁止发送标志
+
+unsigned int				g_ui24L01_ObjectAddr;					// 24L01 发送对象地址
+
+unsigned int				gc_uiBackOverTime;						// 等待回送超时计数
+unsigned char				gc_ucRetryCnt;								// 重试计数
+
+// -------- UATRT 收 无线发 用消息队列 ----------------------
+unsigned char idata	ga_ucMessage[MAX_MESSAGE];		// 消息队列，存放要无线发送的字节数
+unsigned char				gi_ucSaveMessage;							// 消息存放指针
+unsigned char				gi_ucGetMessage;							// 消息取出指针
+
+
+
+
+
+
+
+
+
+/******************************************************/
+/*		 			第三代串口无线转换器I/O口定义							*/
+/* 								u2r_port														*/
+/* 								20100124														*/
+/******************************************************/
+
+// 注：以下文档的 TAB 为 2 个字符！
+
+// SPI Bus RFM12 24L01  共用
+sbit			g_bSPI_SCK = P1^7;								// SPI口时钟,			输出
+sbit			g_bSPI_SDO = P1^6;								// SPI口数据出， 	输入
+sbit			g_bSPI_SDI = P1^5;								// SPI口数据入， 	输出
+
+// RFM12 用
+sbit			g_bRFM12_nCS = P1^4;							// RFM12 片选，输出，低有效
+sbit			g_bRFM12_nIRQ = P3^2;							// RFM12 中断，输入，低有效
+
+// 24L01 用
+
+sbit			g_b24L01_CE = P1^2;								// 24L01 发送控制端, 输出
+sbit			g_b24L01_nCS = P1^3;							// 24L01 片选，输出，低有效
+sbit			g_b24L01_nIRQ = P3^3;							// 24L01 中断，输入，低有效
+
+// 工作指示灯
+
+sbit			g_bLamp	= P3^5;										// 工作状态指示，低电平亮，输出
+

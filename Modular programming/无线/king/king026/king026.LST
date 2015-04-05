@@ -1,0 +1,401 @@
+C51 COMPILER V8.09   KING026                                                               07/27/2011 09:38:15 PAGE 1   
+
+
+C51 COMPILER V8.09, COMPILATION OF MODULE KING026
+OBJECT MODULE PLACED IN king026.OBJ
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE king026.c BROWSE DEBUG OBJECTEXTEND
+
+line level    source
+
+   1          #include<stc12c.h>
+   2          #include <intrins.h>
+   3          
+   4          typedef unsigned char uchar;
+   5          typedef unsigned char uint;
+   6          uchar sta;
+   7          uchar RxBuf[32];
+   8          //****************************************IO端口定义***************************************
+   9          sbit    MISO    =P1^6;
+  10          sbit    MOSI    =P1^5;
+  11          sbit    SCK         =P1^7;
+  12          sbit    CE          =P1^2;
+  13          sbit    CSN             =P1^3;
+  14          sbit    IRQ             =P3^3;
+  15          //*********************************************NRF24L01*************************************
+  16          #define TX_ADR_WIDTH    5       // 5 uints TX address width
+  17          #define RX_ADR_WIDTH    5       // 5 uints RX address width
+  18          #define TX_PLOAD_WIDTH  32      // 20 uints TX payload
+  19          #define RX_PLOAD_WIDTH  32      // 20 uints TX payload
+  20          uint const TX_ADDRESS[TX_ADR_WIDTH]= {0x78,0x78,0x78,0x78,0x78};        //本地地址
+  21          uint const RX_ADDRESS[RX_ADR_WIDTH]= {0x78,0x78,0x78,0x78,0x78};        //接收地址
+  22          //***************************************NRF24L01寄存器指令***********************************************
+             -********
+  23          #define READ_REG        0x00    // 读寄存器指令
+  24          #define WRITE_REG       0x20    // 写寄存器指令
+  25          #define RD_RX_PLOAD     0x61    // 读取接收数据指令
+  26          #define WR_TX_PLOAD     0xA0    // 写待发数据指令
+  27          #define FLUSH_TX        0xE1    // 冲洗发送 FIFO指令
+  28          #define FLUSH_RX        0xE2    // 冲洗接收 FIFO指令
+  29          #define REUSE_TX_PL     0xE3    // 定义重复装载数据指令
+  30          #define NOP             0xFF    // 保留
+  31          //*************************************SPI(nRF24L01)寄存器地址********************************************
+             -********
+  32          #define CONFIG          0x00  // 配置收发状态，CRC校验模式以及收发状态响应方式
+  33          #define EN_AA           0x01  // 自动应答功能设置
+  34          #define EN_RXADDR       0x02  // 可用信道设置
+  35          #define SETUP_AW        0x03  // 收发地址宽度设置
+  36          #define SETUP_RETR      0x04  // 自动重发功能设置
+  37          #define RF_CH           0x05  // 工作频率设置
+  38          #define RF_SETUP        0x06  // 发射速率、功耗功能设置
+  39          #define STATUS          0x07  // 状态寄存器
+  40          #define OBSERVE_TX      0x08  // 发送监测功能
+  41          #define CD              0x09  // 地址检测           
+  42          #define RX_ADDR_P0      0x0A  // 频道0接收数据地址
+  43          #define RX_ADDR_P1      0x0B  // 频道1接收数据地址
+  44          #define RX_ADDR_P2      0x0C  // 频道2接收数据地址
+  45          #define RX_ADDR_P3      0x0D  // 频道3接收数据地址
+  46          #define RX_ADDR_P4      0x0E  // 频道4接收数据地址
+  47          #define RX_ADDR_P5      0x0F  // 频道5接收数据地址
+  48          #define TX_ADDR         0x10  // 发送地址寄存器
+  49          #define RX_PW_P0        0x11  // 接收频道0接收数据长度
+  50          #define RX_PW_P1        0x12  // 接收频道0接收数据长度
+  51          #define RX_PW_P2        0x13  // 接收频道0接收数据长度
+  52          #define RX_PW_P3        0x14  // 接收频道0接收数据长度
+  53          #define RX_PW_P4        0x15  // 接收频道0接收数据长度
+C51 COMPILER V8.09   KING026                                                               07/27/2011 09:38:15 PAGE 2   
+
+  54          #define RX_PW_P5        0x16  // 接收频道0接收数据长度
+  55          #define FIFO_STATUS     0x17  // FIFO栈入栈出状态寄存器设置
+  56          //**************************************************************************************
+  57          void Delay(unsigned int s);
+  58          void inerDelay_us(unsigned char n);
+  59          void init_NRF24L01(void);
+  60          uint SPI_RW(uint uchar);
+  61          uchar SPI_Read(uchar reg);
+  62          void SetRX_Mode(void);
+  63          uint SPI_RW_Reg(uchar reg, uchar value);
+  64          uint SPI_Read_Buf(uchar reg, uchar *pBuf, uchar uchars);
+  65          uint SPI_Write_Buf(uchar reg, uchar *pBuf, uchar uchars);
+  66          unsigned char nRF24L01_RxPacket(unsigned char* rx_buf);
+  67          void nRF24L01_TxPacket(unsigned char * tx_buf);
+  68          //*****************************************长延时*****************************************
+  69          void delay(void)
+  70          {
+  71   1      unsigned char i,j,k;
+  72   1      for(i=200;i>0;i--)
+  73   1      for(j=100;j>0;j--)
+  74   1      for(k=25;k>0;k--);
+  75   1      }
+  76          //******************************************************************************************
+  77          /*
+  78          uint    bdata sta;   //状态标志
+  79          sbit    RX_DR   =sta^6;
+  80          sbit    TX_DS   =sta^5;
+  81          sbit    MAX_RT  =sta^4;
+  82          */
+  83          /******************************************************************************************
+  84          /*延时函数
+  85          /******************************************************************************************/
+  86          void inerDelay_us(unsigned char n)
+  87          {
+  88   1              for(;n>0;n--)
+  89   1                      _nop_();
+  90   1      }
+  91          //************************************串口初始化*********************************************************
+  92          void StartUART( void )
+  93          {                                                       
+  94   1              PCON = 0x00;
+  95   1      
+  96   1              TMOD=0x20;                      //timer1工作方式2
+  97   1              TH1=0xfa;                       //SMOD=0 fosc=22.1184M 波特率=9600
+  98   1              TL1=0xfa;
+  99   1              
+ 100   1              EA=1;
+ 101   1              ES=1;                           //开串行口中断
+ 102   1              TR1=1;                          //开timer1中断
+ 103   1              
+ 104   1              REN=1;                          //或SCON=0x50
+ 105   1              SM0=0;                          //串行口工作方式1
+ 106   1              SM1=1;
+ 107   1      }
+ 108          //************************************通过串口将接收到数据发送给PC端**************************************
+ 109          void R_S_Byte(uchar R_Byte)
+ 110          {       
+ 111   1               SBUF = R_Byte;  
+ 112   1           while(!TI);                                //查询法
+ 113   1               TI = 0;    
+ 114   1      }
+ 115          
+C51 COMPILER V8.09   KING026                                                               07/27/2011 09:38:15 PAGE 3   
+
+ 116          //****************************************************************************************
+ 117          /*NRF24L01初始化
+ 118          //***************************************************************************************/
+ 119          void init_NRF24L01(void)
+ 120          {
+ 121   1          inerDelay_us(100);
+ 122   1              CE=0;    // chip enable
+ 123   1              CSN=1;   // Spi disable 
+ 124   1              SCK=0;   // Spi clock line init high
+ 125   1      //      SPI_Write_Buf(WRITE_REG + TX_ADDR, TX_ADDRESS, TX_ADR_WIDTH);    // 写本地地址  
+ 126   1              SPI_Write_Buf(WRITE_REG + RX_ADDR_P0, RX_ADDRESS, RX_ADR_WIDTH); // 写接收端地址
+ 127   1              SPI_RW_Reg(WRITE_REG + EN_AA, 0x01);      //  频道0自动 ACK应答允许     
+ 128   1              SPI_RW_Reg(WRITE_REG + EN_RXADDR, 0x01);  //  允许接收地址只有频道0，如果需要多频道可以参考Page21 
+ 129   1              SPI_RW_Reg(WRITE_REG + SETUP_AW, 0x03);         //设置地址宽度
+ 130   1              SPI_RW_Reg(WRITE_REG + SETUP_RETR, 0x00);       //自动重发         
+ 131   1              SPI_RW_Reg(WRITE_REG + RF_CH, 0x00);        //设置信道工作为2.4GHZ，收发必须一致
+ 132   1              SPI_RW_Reg(WRITE_REG + RX_PW_P0, 0x3f); //设置接收数据长度，本次设置为32字节
+ 133   1              SPI_RW_Reg(WRITE_REG + RF_SETUP, 0x07);                 //设置发射速率为1MHZ，发射功率为最大值0dB       
+ 134   1              SPI_RW_Reg(WRITE_REG + CONFIG, 0x0e);                    // IRQ收发完成中断响应，16位CRC，主发送
+ 135   1      
+ 136   1      }
+ 137          /****************************************************************************************************
+ 138          /*函数：uint SPI_RW(uint uchar)
+ 139          /*功能：NRF24L01的SPI写时序
+ 140          /****************************************************************************************************/
+ 141          uint SPI_RW(uint uchar)
+ 142          {
+ 143   1              uint bit_ctr;
+ 144   1              for(bit_ctr=0;bit_ctr<8;bit_ctr++) // output 8-bit
+ 145   1              {
+ 146   2                      MOSI = (uchar & 0x80);         // output 'uchar', MSB to MOSI
+ 147   2                      uchar = (uchar << 1);           // shift next bit into MSB..
+ 148   2                      SCK = 1;                      // Set SCK high..
+ 149   2                      uchar |= MISO;                    // capture current MISO bit
+ 150   2                      SCK = 0;                          // ..then set SCK low again
+ 151   2              }
+ 152   1          return(uchar);                        // return read uchar
+ 153   1      }
+ 154          /****************************************************************************************************
+ 155          /*函数：uchar SPI_Read(uchar reg)
+ 156          /*功能：NRF24L01的SPI时序
+ 157          /****************************************************************************************************/
+ 158          uchar SPI_Read(uchar reg)
+ 159          {
+ 160   1              uchar reg_val;
+ 161   1              
+ 162   1              CSN = 0;                // CSN low, initialize SPI communication...
+ 163   1              SPI_RW(reg);            // Select register to read from..
+ 164   1              reg_val = SPI_RW(0);    // ..then read registervalue
+ 165   1              CSN = 1;                // CSN high, terminate SPI communication
+ 166   1              
+ 167   1              return(reg_val);        // return register value
+ 168   1      }
+ 169          /****************************************************************************************************/
+ 170          /*功能：NRF24L01读写寄存器函数
+ 171          /****************************************************************************************************/
+ 172          uint SPI_RW_Reg(uchar reg, uchar value)
+ 173          {
+ 174   1              uint status;
+ 175   1              
+ 176   1              CSN = 0;                   // CSN low, init SPI transaction
+ 177   1              status = SPI_RW(reg);      // select register
+C51 COMPILER V8.09   KING026                                                               07/27/2011 09:38:15 PAGE 4   
+
+ 178   1              SPI_RW(value);             // ..and write value to it..
+ 179   1              CSN = 1;                   // CSN high again
+ 180   1              
+ 181   1              return(status);            // return nRF24L01 status uchar
+ 182   1      }
+ 183          /****************************************************************************************************/
+ 184          /*函数：uint SPI_Read_Buf(uchar reg, uchar *pBuf, uchar uchars)
+ 185          /*功能: 用于读数据，reg：为寄存器地址，pBuf：为待读出数据地址，uchars：读出数据的个数
+ 186          /****************************************************************************************************/
+ 187          uint SPI_Read_Buf(uchar reg, uchar *pBuf, uchar uchars)
+ 188          {
+ 189   1              uint status,uchar_ctr;
+ 190   1              
+ 191   1              CSN = 0;                                // Set CSN low, init SPI tranaction
+ 192   1              status = SPI_RW(reg);                   // Select register to write to and read status uchar
+ 193   1              
+ 194   1              for(uchar_ctr=0;uchar_ctr<uchars;uchar_ctr++)
+ 195   1                      pBuf[uchar_ctr] = SPI_RW(0);    // 
+ 196   1              
+ 197   1              CSN = 1;                           
+ 198   1              
+ 199   1              return(status);                    // return nRF24L01 status uchar
+ 200   1      }
+ 201          /*********************************************************************************************************
+ 202          /*函数：uint SPI_Write_Buf(uchar reg, uchar *pBuf, uchar uchars)
+ 203          /*功能: 用于写数据：为寄存器地址，pBuf：为待写入数据地址，uchars：写入数据的个数
+ 204          /*********************************************************************************************************
+             -/
+ 205          uint SPI_Write_Buf(uchar reg, uchar *pBuf, uchar uchars)
+ 206          {
+ 207   1              uint status,uchar_ctr;
+ 208   1              
+ 209   1              CSN = 0;            //SPI使能       
+ 210   1              status = SPI_RW(reg);   
+ 211   1              for(uchar_ctr=0; uchar_ctr<uchars; uchar_ctr++) //
+ 212   1                      SPI_RW(*pBuf++);
+ 213   1              CSN = 1;           //关闭SPI
+ 214   1              return(status);    // 
+ 215   1      }
+ 216          /****************************************************************************************************/
+ 217          /*函数：void SetRX_Mode(void)
+ 218          /*功能：数据接收配置 
+ 219          /****************************************************************************************************/
+ 220          void SetRX_Mode(void)
+ 221          {
+ 222   1              CE=0;
+ 223   1              SPI_RW_Reg(WRITE_REG + CONFIG, 0x0f);                   // IRQ收发完成中断响应，16位CRC ，主接收
+ 224   1              CE = 1; 
+ 225   1              inerDelay_us(130);
+ 226   1      }
+ 227          
+ 228          /******************************************************************************************************/
+ 229          /*函数：unsigned char nRF24L01_RxPacket(unsigned char* rx_buf)
+ 230          /*功能：数据读取后放如rx_buf接收缓冲区中
+ 231          /******************************************************************************************************/
+ 232          /*
+ 233          unsigned char nRF24L01_RxPacket(unsigned char* rx_buf)
+ 234          {
+ 235              unsigned char revale=0;
+ 236                  sta=SPI_Read(STATUS);   // 读取状态寄存其来判断数据接收状况
+ 237                  if(RX_DR)                               // 判断是否接收到数据
+ 238                  {
+C51 COMPILER V8.09   KING026                                                               07/27/2011 09:38:15 PAGE 5   
+
+ 239                      CE = 0;                     //SPI使能
+ 240                          SPI_Read_Buf(RD_RX_PLOAD,rx_buf,TX_PLOAD_WIDTH);// read receive payload from RX_FIFO buffer
+ 241                          revale =1;                      //读取数据完成标志
+ 242                  }
+ 243                  SPI_RW_Reg(WRITE_REG+STATUS,0x07);   //接收到数据后RX_DR,TX_DS,MAX_PT都置高为1，通过写1来清楚中断标志
+ 244                  return revale;
+ 245          }
+ 246          */
+ 247          /*********************************************************************************************************
+             -**
+ 248          /*函数：void nRF24L01_TxPacket(unsigned char * tx_buf)
+ 249          /*功能：发送 tx_buf中数据
+ 250          /*********************************************************************************************************
+             -*/
+ 251          /*
+ 252          void nRF24L01_TxPacket(unsigned char * tx_buf)
+ 253          {
+ 254                  CE=0;                   //StandBy I模式 
+ 255                  SPI_Write_Buf(WRITE_REG + RX_ADDR_P0, TX_ADDRESS, TX_ADR_WIDTH); // 装载接收端地址
+ 256                  SPI_Write_Buf(WR_TX_PLOAD, tx_buf, TX_PLOAD_WIDTH);                      // 装载数据    
+ 257                  SPI_RW_Reg(WRITE_REG + CONFIG, 0x0e);                    // IRQ收发完成中断响应，16位CRC，主发送
+ 258                  CE=1;            //置高CE，激发数据发送
+ 259                  inerDelay_us(10);
+ 260          }
+ 261          */
+ 262          
+ 263          /******************************************************************************************************/
+ 264          /*函数：unsigned char nRF24L01_RxPacket(unsigned char* rx_buf)
+ 265          /*功能：数据读取后放如rx_buf接收缓冲区中
+ 266          /******************************************************************************************************/
+ 267          unsigned char nRF24L01_RxPacket(unsigned char* rx_buf)
+ 268          {
+ 269   1          unsigned char revale=0;
+ 270   1              CE=0;
+ 271   1      
+ 272   1              SPI_RW_Reg(WRITE_REG + CONFIG, 0x0f); 
+ 273   1              CE=1;
+ 274   1              inerDelay_us(10);
+ 275   1              inerDelay_us(10);
+ 276   1              sta=SPI_Read(STATUS);   // 读取状态寄存其来判断数据接收状况
+ 277   1      //      if(RX_DR)                               // 判断是否接收到数据
+ 278   1      //      {
+ 279   1                  CE=0;                       //SPI使能
+ 280   1                      SPI_Read_Buf(RD_RX_PLOAD,rx_buf,TX_PLOAD_WIDTH);// read receive payload from RX_FIFO buffer
+ 281   1                      revale =1;                      //读取数据完成标志
+ 282   1      //      }
+ 283   1              SPI_RW_Reg(WRITE_REG+STATUS,0x07);   //接收到数据后RX_DR,TX_DS,MAX_PT都置高为1，通过写1来清楚中断标志
+ 284   1              return revale;
+ 285   1      }
+ 286          /*********************************************************************************************************
+             -**
+ 287          /*函数：void nRF24L01_TxPacket(unsigned char * tx_buf)
+ 288          /*功能：发送 tx_buf中数据
+ 289          /*********************************************************************************************************
+             -*/
+ 290          void nRF24L01_TxPacket(unsigned char * tx_buf)
+ 291          {
+ 292   1              CE=0;           //StandBy I模式 
+ 293   1              SPI_RW_Reg(WRITE_REG + CONFIG, 0x0e);
+ 294   1              sta=SPI_Read(STATUS);   // 读取状态寄存其来判断数据接收状况
+ 295   1              SPI_Write_Buf(WRITE_REG + RX_ADDR_P0, TX_ADDRESS, TX_ADR_WIDTH); // 装载接收端地址
+ 296   1              SPI_Write_Buf(WR_TX_PLOAD, tx_buf, TX_PLOAD_WIDTH);                      // 装载数据
+C51 COMPILER V8.09   KING026                                                               07/27/2011 09:38:15 PAGE 6   
+
+ 297   1              CE=1;            //置高CE，激发数据发送
+ 298   1              inerDelay_us(10);
+ 299   1              inerDelay_us(10);               
+ 300   1              SPI_RW_Reg(WRITE_REG + CONFIG, 0x0f);                    // IRQ收发完成中断响应，16位CRC，主发送
+ 301   1              SPI_RW_Reg(WRITE_REG+STATUS,0x07); 
+ 302   1      /*      if(TX_DS)
+ 303   1              {
+ 304   1              CE = 0;                         //SPI使能
+ 305   1              SPI_RW_Reg(WRITE_REG+STATUS,0x07);   //接收到数据后RX_DR,TX_DS,MAX_PT都置高为1，通过写1来清楚中断标志
+ 306   1              R_S_Byte(0x73);
+ 307   1              }
+ 308   1      */      CE=1;            //置高CE，激发数据发送
+ 309   1              inerDelay_us(10);
+ 310   1      }
+ 311          
+ 312          
+ 313          //************************************主函数************************************************************
+ 314          void main(void)
+ 315          {
+ 316   1              uchar i;        
+ 317   1          init_NRF24L01();
+ 318   1              StartUART();
+ 319   1              delay();
+ 320   1              while(1)
+ 321   1              {
+ 322   2      /*              if(temp<4)
+ 323   2                      {
+ 324   2                      switch(temp)
+ 325   2                      {
+ 326   2                      case    1:      
+ 327   2                      P0=     0xFE;
+ 328   2                              break;  
+ 329   2                      case    2:       
+ 330   2                 
+ 331   2                              P0=     0xBF;
+ 332   2                                      break;  
+ 333   2                      case    3:
+ 334   2                              P0=     0xf7;
+ 335   2      
+ 336   2                              break;  
+ 337   2                      default:  break;
+ 338   2                      }
+ 339   2                      }
+ 340   2              if(temp==3)
+ 341   2                      {
+ 342   2                      temp=0;
+ 343   2                      }
+ 344   2      */
+ 345   2      //              SetRX_Mode();
+ 346   2                      if(nRF24L01_RxPacket(RxBuf))
+ 347   2                      {
+ 348   3      //                      temp++;
+ 349   3                              R_S_Byte(0x73);
+ 350   3                              for(i=0;i<32;i++)
+ 351   3                              {
+ 352   4                                      R_S_Byte(RxBuf[i]);
+ 353   4                                      delay();
+ 354   4                              }       
+ 355   3                      }
+ 356   2              
+ 357   2              }
+ 358   1              
+C51 COMPILER V8.09   KING026                                                               07/27/2011 09:38:15 PAGE 7   
+
+ 359   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    482    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     43      17
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

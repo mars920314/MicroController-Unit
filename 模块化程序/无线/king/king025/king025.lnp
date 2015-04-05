@@ -1,0 +1,4 @@
+"STARTUP.obj",
+"king025.obj" 
+TO "king025" 
+RAMSIZE(256) 

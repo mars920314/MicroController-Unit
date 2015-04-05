@@ -1,0 +1,174 @@
+C51 COMPILER V8.09   KING028                                                               07/27/2011 12:06:32 PAGE 1   
+
+
+C51 COMPILER V8.09, COMPILATION OF MODULE KING028
+OBJECT MODULE PLACED IN king028.OBJ
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE king028.c BROWSE DEBUG OBJECTEXTEND
+
+line level    source
+
+   1          #include<reg51.h>
+   2          
+   3          sbit x34=P3^4;          
+   4          sbit x35=P3^5;          
+   5          sbit x36=P3^6;
+   6          sbit x37=P3^7;
+   7          sbit x20=P2^0;
+   8          sbit x21=P2^1;
+   9          
+  10          #define uint unsigned int
+  11          #define uchar unsigned char
+  12          #define V_TH0 0xff
+  13          #define V_TL0 0xf6
+  14          #define V_TMOD 0x01
+  15          
+  16          sbit IN1=P2^0;
+  17          sbit IN2=P2^1;
+  18          sbit IN3=P2^2;
+  19          sbit IN4=P2^3;
+  20          sbit ENA=P2^4;
+  21          sbit ENB=P2^5;
+  22          uchar ZKB;
+  23          uchar click=0;
+  24          uchar temp1,temp2,flag=0;
+  25          
+  26          void delay(unsigned long int t)
+  27          {
+  28   1      unsigned char i,j;
+  29   1      for(i=25;i>0;i--)
+  30   1      for(j=50;j>0;j--)
+  31   1      for(;t>0;t--);
+  32   1      }
+  33          
+  34          void yaokong(void)
+  35          {
+  36   1              if((temp1>0x70&&temp1<0x80)&&(temp2>0x70&&temp2<0x80))
+  37   1              {     
+  38   2                  IN1=1;
+  39   2                              IN2=1;
+  40   2                              IN3=1;
+  41   2                              IN4=1;
+  42   2              }
+  43   1      
+  44   1           if(temp1<0x71)
+  45   1           {
+  46   2                  IN1=1;
+  47   2                              IN2=0;
+  48   2                              IN3=1;
+  49   2                              IN4=0;
+  50   2           }
+  51   1           if(temp1>0x81)
+  52   1           {
+  53   2                  IN1=0;
+  54   2                              IN2=1;
+  55   2                              IN3=0;
+C51 COMPILER V8.09   KING028                                                               07/27/2011 12:06:32 PAGE 2   
+
+  56   2                              IN4=1;
+  57   2           }
+  58   1      
+  59   1           if(temp2<0x71)
+  60   1           {
+  61   2                  IN1=1;
+  62   2                              IN2=0;
+  63   2                              IN3=0;
+  64   2                              IN4=1;
+  65   2           }
+  66   1           if(temp2>0x81)
+  67   1           {
+  68   2                  IN1=0;
+  69   2                              IN2=1;
+  70   2                              IN3=1;
+  71   2                              IN4=0;
+  72   2           }
+  73   1      }
+  74          
+  75          void init_sys()
+  76          {
+  77   1          TMOD=V_TMOD;
+  78   1          TH0=V_TH0;
+  79   1          TL0=V_TL0;
+  80   1          TR0=1;
+  81   1          ET0=1;
+  82   1          EA=1;
+  83   1      }
+  84          
+  85          /*void time0() interrupt 1
+  86          {
+  87               TR0=0;
+  88               TH0=V_TH0;
+  89               TL0=V_TL0;
+  90               click++;
+  91                   if(click>99)
+  92                     click=0;
+  93               if(click<ZKB)
+  94                   {
+  95                 ENA=1;
+  96                     ENB=1;
+  97                   }
+  98               else
+  99                   {
+ 100                 ENA=0; 
+ 101                     ENB=0;
+ 102                   }
+ 103                   TR0=1;
+ 104          }
+ 105          */
+ 106          void adread(unsigned char cho)
+ 107          {
+ 108   1              if(cho==1)
+ 109   1              {
+ 110   2                      x35=0;
+ 111   2                      x34=1;
+ 112   2              }
+ 113   1              else if(cho==0)
+ 114   1              {
+ 115   2                      x35=1;
+ 116   2                      x34=0;
+ 117   2              }
+C51 COMPILER V8.09   KING028                                                               07/27/2011 12:06:32 PAGE 3   
+
+ 118   1              x36=1;
+ 119   1              x36=0;
+ 120   1      
+ 121   1              
+ 122   1              x37=1;
+ 123   1              delay(1);
+ 124   1              x37=0;
+ 125   1              delay(1);
+ 126   1              x37=1;
+ 127   1      
+ 128   1      }
+ 129                  
+ 130          void main()
+ 131          {
+ 132   1              init_sys(); 
+ 133   1              while(1)
+ 134   1              {
+ 135   2                      adread(1);
+ 136   2                      temp1=P1;
+ 137   2                      P1=temp1;
+ 138   2                      x20=0;
+ 139   2                      x21=1;
+ 140   2                      x21=0;
+ 141   2                      x21=1;
+ 142   2                      adread(0);
+ 143   2                      temp2=P0;
+ 144   2                      ZKB=100*(temp1/255);
+ 145   2      //              yaokong();
+ 146   2              }
+ 147   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    261    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      5       6
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
